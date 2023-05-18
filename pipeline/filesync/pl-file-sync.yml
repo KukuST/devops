@@ -1,0 +1,50 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: hro-dev-file-sync
+spec:
+  params:
+    - name: git-url
+    - name: git-revision
+    - name: direction
+    - name: local-path
+    - name: remote-ip
+    - name: remote-username
+    - name: remote-path
+  
+  workspaces:
+    - name: source
+    - name: ssh-creds 
+  tasks:
+    - name: clone-sources
+      taskRef:
+        name: git-clone
+      params:
+        - name: git-url
+          value: $(params.git-url)
+        - name: git-revision
+          value: $(params.git-revision)
+      workspaces:
+        - name: output
+          workspace: source
+    - name: file-sync
+      taskRef:
+        name: rsync
+      runAfter:
+        - clone-sources
+      params:
+        - name: direction
+          value: $(params.direction)
+        - name: local-path
+          value: $(params.local-path)
+        - name: remote-ip
+          value: $(params.remote-ip)
+        - name: remote-username
+          value: $(params.remote-username)
+        - name: remote-path
+          value: $(params.remote-path)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: ssh-directory
+          workspace: ssh-creds

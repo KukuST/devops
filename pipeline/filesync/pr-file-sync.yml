@@ -1,0 +1,33 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: hro-dev-file-sync-pipeline-
+spec:
+  serviceAccountName: sa-pipeline-runner
+  pipelineRef:
+          name: hro-dev-file-sync
+  params:
+  - name: git-url
+    value: "https://gitlab.herosonsa.co.kr/devops-infra/file-sample.git"
+  - name: git-revision
+    value: "dev"
+  - name: direction
+    value: "local-to-remote"
+  - name: local-path
+    value: "."
+  - name: remote-ip
+    value: "10.3.20.10"
+  - name: remote-username
+    value: "kubeadm"
+  - name: remote-path
+    value: "/home/kubeadm/file"
+  workspaces:
+  - name: source
+    persistentvolumeclaim:
+      claimName: pvc-hero-dev-build
+  - name: ssh-creds
+    secret:
+      secretName: hro-ssh-secret
+
+
+

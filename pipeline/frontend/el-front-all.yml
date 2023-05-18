@@ -1,0 +1,86 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: hro-dev-front-all-listener
+spec:
+  serviceAccountName: sa-pipeline-trigger
+  triggers:
+    - name: build-trigger
+      interceptors:
+        - name: "CEL filter: dev branch only"
+          ref:
+            name: "cel"
+          params:
+          - name: "filter"
+            value: "body.ref in ['refs/heads/dev']"
+      bindings:
+        - ref: hro-dev-front-all-binding
+      template:
+        ref: hro-dev-front-all-template
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: hro-dev-front-all-binding
+spec:
+  params:
+    - name: gitrevision
+      value: $(body.after)
+    - name: gitrepositoryurl
+      value: $(body.project.http_url)
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: hro-dev-front-all-template
+spec:
+  params:
+    - name: gitrevision
+      description: The git revision
+      default: main
+    - name: gitrepositoryurl
+      description: The git repository url
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: PipelineRun
+      metadata:
+        generateName: hro-dev-front-all-pipeline-
+      spec:
+        serviceAccountName: sa-pipeline-runner
+        pipelineRef:
+          name: hro-dev-front-all
+        podTemplate:
+          imagePullSecrets:
+            - name: hero-reg
+        params:
+        - name: git-url
+          value: $(tt.params.gitrepositoryurl)
+        - name: git-revision
+          value: $(tt.params.gitrevision)
+        - name: insecure-registry
+          value: "false"
+        - name: image-url
+          value: "tbd5d1uh.private-ncr.fin-ntruss.com/hero"
+        - name: argo-app-name
+          value: "web-sample"
+        - name: gitops-url
+          value: "https://hello-3031818.devtools.fin-ncloud.com/3031818/hro-apps-web-sample-deploy.git"
+        - name: gitops-revision
+          value: "master"
+        - name: deploy-manifest
+          value: "kustomization.yaml"
+        - name: argo-url
+          value: "argocd.herosonsa.co.kr"
+        - name: build-stage
+          value: "dev"
+        - name: sonar-project-key
+          value: "web-sample"
+        workspaces:
+        - name: source
+          persistentvolumeclaim:
+            claimName: pvc-hero-dev-build
+        - name: gitops
+          emptyDir: {}
+        - name: manifest-dir
+          emptyDir: {}
+

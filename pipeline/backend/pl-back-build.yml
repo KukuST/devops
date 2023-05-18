@@ -1,0 +1,110 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: hro-dev-back-build
+spec:
+  params:
+    - name: build-stage
+      type: string
+    - name: git-url
+      type: string
+    - name: git-revision
+      type: string
+    - name: image-url
+      type: string
+    - name: insecure-registry
+      type: string
+    - name: gitops-url
+      type: string
+    - name: gitops-revision
+      type: string
+    - name: deploy-manifest
+      type: string
+    - name: sonar-project-key
+      type: string
+  tasks:
+    - name: generate-id
+      params:
+        - name: base-version
+          value: $(params.build-stage)
+      taskRef:
+        kind: Task
+        name: generate-build-id
+    - name: clone-sources
+      params:
+        - name: git-url
+          value: $(params.git-url)
+        - name: git-revision
+          value: $(params.git-revision)
+      runAfter:
+        - generate-id
+      taskRef:
+        kind: Task
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: source
+    - name: source-scan
+      params:
+        - name: SONAR_PROJECT_KEY
+          value: $(params.sonar-project-key)
+      runAfter:
+        - clone-sources
+      taskRef:
+        kind: Task
+        name: sonarqube-scan
+      workspaces:
+        - name: source
+          workspace: source
+    - name: build-image
+      params:
+        - name: IMAGE
+          value: $(params.image-url):$(tasks.generate-id.results.build-id)
+        - name: insecure-registry
+          value: $(params.insecure-registry)
+      runAfter:
+        - source-scan
+      taskRef:
+        kind: Task
+        name: jib-maven
+      workspaces:
+        - name: source
+          workspace: source
+    - name: image-scan
+      params:
+        - name: IMAGE
+          value: $(params.image-url):$(tasks.generate-id.results.build-id)
+      runAfter:
+        - build-image
+      taskRef:
+        kind: Task
+        name: trivy-scan
+      workspaces:
+        - name: manifest-dir
+          workspace: manifest-dir
+    - name: update-image
+      params:
+        - name: gitops-revision
+          value: $(params.gitops-revision)
+        - name: deploy-manifest
+          value: $(params.deploy-manifest)
+        - name: build-stage
+          value: $(params.build-stage)
+        - name: gitops-url
+          value: $(params.gitops-url)
+        - name: image-url
+          value: $(params.image-url)
+        - name: build-id
+          value: $(tasks.generate-id.results.build-id)
+      runAfter:
+        - build-image
+      taskRef:
+        kind: Task
+        name: update
+      workspaces:
+        - name: gitops
+          workspace: gitops
+  workspaces:
+    - name: source
+    - name: gitops
+    - name: manifest-dir

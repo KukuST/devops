@@ -1,0 +1,30 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: hro-dev-back-deploy-pipeline-
+spec:
+  serviceAccountName: sa-pipeline-runner
+  pipelineRef:
+    name: hro-dev-back-deploy
+  podTemplate:
+    imagePullSecrets:
+      - name: hero-reg
+  params:
+  - name: argo-app-name
+    value: "dev-maven-sample"
+  - name: argo-url
+    value: "argocd.herosonsa.co.kr"
+  - name: gitops-url
+    value: "https://hello-3031818.devtools.fin-ncloud.com/3031818/hro-apps-maven-sample-deploy.git"
+  - name: gitops-revision
+    value: "dev"
+  - name: deploy-manifest
+    value: "kustomization.yaml"
+  - name: build-stage
+    value: "dev"
+  - name: rollout-strategy
+    value: "rolling"
+  workspaces:
+  - name: gitops
+    emptyDir: {}
+

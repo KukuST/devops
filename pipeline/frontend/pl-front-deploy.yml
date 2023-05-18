@@ -1,0 +1,37 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: hro-dev-front-deploy
+spec:
+  params:
+    - name: argo-url
+    - name: argo-app-name
+    - name: gitops-revision
+    - name: deploy-manifest
+    - name: build-stage
+    - name: gitops-url
+    - name: rollout-strategy
+  workspaces:
+    - name: gitops
+  tasks:
+    - name: deploy
+      taskRef:
+        name: deploy
+      params:
+        - name: argo-url
+          value: $(params.argo-url)
+        - name: argo-app-name
+          value: $(params.argo-app-name)
+        - name: gitops-revision
+          value: $(params.gitops-revision)
+        - name: deploy-manifest
+          value: $(params.deploy-manifest)
+        - name: build-stage
+          value: $(params.build-stage)
+        - name: gitops-url
+          value: $(params.gitops-url)
+        - name: rollout-strategy
+          value: $(params.rollout-strategy)
+      workspaces:
+        - name: gitops
+          workspace: gitops  
